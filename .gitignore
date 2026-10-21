@@ -1,0 +1,11 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.streamlit/
+ecommerce_ops.db
+*.sqlite
+*.sqlite3
+.DS_Store
