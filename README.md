@@ -1,241 +1,270 @@
-# AI E-commerce Operations Agent — Forecastly
+# StockPilot AI — Intelligent Inventory & Retail Operations Agent
 
-An inventory intelligence and operations MVP designed to help e-commerce and retail teams identify stock risks, spot slow-moving or dead-stock candidates, estimate near-term demand, and prepare replenishment proposals for human review.
+StockPilot AI is an AI-powered inventory intelligence platform that helps identify stock risks, detect slow-moving and dead-stock candidates, estimate short-term demand, and generate replenishment recommendations.
 
-The project combines a **FastAPI REST API**, a **Streamlit operations dashboard**, SQLAlchemy-backed data storage, scheduled inventory monitoring, and an optional Google Gemini-powered investigation agent. It includes synthetic demo products and sales history so the application can be explored locally without a real store connection or paid AI API.
+Built with FastAPI, Streamlit, SQLAlchemy, and optional Google Gemini integration, the application combines automated inventory monitoring, sales analytics, demand estimation, and human-in-the-loop decision-making in one dashboard.
 
-> **Project status:** Runnable local MVP / portfolio project. Demo mode uses synthetic data. Gemini is optional. Shopify integration is a read-only integration scaffold. The application does not place supplier orders.
+**Project Status:** Working local MVP with automated scheduled monitoring, manual risk checks, demand forecasting baselines, AI-assisted investigations, replenishment proposals, and Docker support.
 
-## Key Features
+**Note:** The current demo uses synthetic inventory and sales data. Monitoring works automatically on the application's available data; live synchronization with a real e-commerce store is not yet implemented.
 
-- **Inventory Overview:** View seeded products, stock levels, categories, prices, and sales metrics.
-- **Automated Risk Monitoring:** Periodically checks inventory and sales signals for stock-out risk, low stock, slow-moving products, and dead-stock candidates.
-- **Manual Monitoring:** Trigger a risk check from the dashboard or REST API.
-- **Demand Baseline:** Estimates next-seven-day demand using a transparent 30-day moving-average baseline and compares recent sales with the previous 30-day period.
-- **Evidence-Grounded Investigation Agent:** Summarizes product risks using recorded inventory, sales metrics, and active alerts. It uses Google Gemini when configured and falls back to deterministic rules if no key is set or the AI request fails.
-- **Replenishment Proposals:** Calculates a suggested replenishment quantity and creates a pending proposal.
-- **Human Review Workflow:** Approve or reject proposals in the dashboard. Approval only records a decision; it does not send a purchase order.
-- **Interactive Dashboard:** Streamlit tabs for inventory, risk alerts, agent investigations, approvals, and demand baselines.
-- **REST API and Swagger UI:** FastAPI endpoints with interactive API documentation.
-- **Persistence Options:** SQLite by default for simple local setup, with PostgreSQL available through Docker Compose.
-- **Tests and CI:** Pytest tests and a GitHub Actions workflow.
-- **Optional Shopify Scaffold:** A read-only Admin REST API client scaffold for future integration with a real store.
+## Features
+
+- **Inventory Dashboard:** View products, stock levels, categories, prices, and sales metrics.
+- **Automated Risk Monitoring:** Periodically checks inventory and sales data for stock-out risk, low stock, slow-moving products, and potential dead stock.
+- **Manual Risk Checks:** Trigger inventory monitoring from the dashboard or REST API.
+- **Demand Forecasting Baseline:** Estimates demand for the next seven days using recent sales history.
+- **Sales Trend Comparison:** Compares recent sales with the previous 30-day period.
+- **AI-Assisted Investigation:** Uses Google Gemini when configured to summarize product risks and recommendations based on available evidence.
+- **Rules-Based Fallback:** Continues to provide deterministic investigation results when Gemini is not configured or an AI request fails.
+- **Replenishment Recommendations:** Calculates suggested replenishment quantities and creates draft proposals.
+- **Human-in-the-Loop Workflow:** Allows users to approve or reject replenishment proposals.
+- **Interactive Dashboard:** Provides views for inventory, risk alerts, investigations, approvals, and demand baselines.
+- **REST API:** FastAPI endpoints with interactive Swagger documentation.
+- **Database Support:** SQLite for local development and PostgreSQL through Docker Compose.
+- **Automated Tests:** Pytest tests and a GitHub Actions workflow.
+- **Shopify Integration Scaffold:** Includes a read-only integration foundation for future store connectivity.
 
 ## Tech Stack
 
 | Area | Technologies |
 |---|---|
 | Programming Language | Python |
-| Backend / API | FastAPI, REST APIs, Pydantic, Uvicorn |
+| Backend | FastAPI, Uvicorn, Pydantic |
+| API | REST APIs |
+| Frontend / Dashboard | Streamlit |
 | Data Access | SQLAlchemy |
-| Database | SQLite by default; PostgreSQL with Docker Compose |
-| Dashboard | Streamlit |
-| Data Analysis / Visualization | Pandas, Plotly |
-| AI / Agent | Google Gemini API (optional), evidence-grounded rules fallback |
-| Scheduled Monitoring | APScheduler |
-| Integrations | Shopify read-only client scaffold |
+| Database | SQLite, PostgreSQL |
+| Data Analysis | Pandas |
+| Visualization | Plotly |
+| AI Integration | Google Gemini API (optional) |
+| Inventory Monitoring | APScheduler, rule-based risk detection |
+| Forecasting | 30-day moving-average demand baseline |
+| Integration Scaffold | Shopify Admin REST API client |
 | Testing | Pytest, HTTPX |
-| DevOps | Docker, Docker Compose, GitHub Actions |
+| Containerization | Docker, Docker Compose |
+| CI | GitHub Actions |
 | Version Control | Git, GitHub |
 
 ## How It Works
 
-1. The application loads a small demo catalog and synthetic sales history.
-2. The monitoring logic calculates recent sales, average daily units, stock coverage, and days since the last recorded sale.
-3. Rule-based checks create or update risk alerts and mark no-longer-applicable open alerts as resolved.
-4. A scheduled job repeats monitoring at a configurable interval; users can also trigger it manually.
-5. The demand endpoint estimates next-seven-day units from the last 30 days and reports the change against the preceding 30-day average.
-6. The investigation agent combines product data, sales metrics, and open alerts into evidence and recommendations. If configured, Gemini can summarize that evidence; otherwise, rules-based output is used.
-7. A user can create a draft replenishment proposal and approve or reject it. No supplier order is sent automatically.
+1. The application loads a sample product catalog and synthetic sales history.
+2. The monitoring service calculates recent sales, average daily sales, estimated stock coverage, and time since the last recorded sale.
+3. Rule-based checks identify potential inventory risks and create or update risk alerts.
+4. Scheduled monitoring runs at a configurable interval, while users can also trigger checks manually.
+5. The demand endpoint estimates the next seven days of demand using recent sales history.
+6. The investigation agent combines product metrics and active alerts to generate recommendations. Google Gemini can provide an AI-generated summary when configured.
+7. Users can create replenishment proposals and approve or reject them through the dashboard.
+
+Approving a proposal records the decision only. The application does not automatically place supplier orders.
 
 ## Architecture
 
 ```text
-                 Streamlit Dashboard
-                         |
-                         | HTTP REST requests
-                         v
-                    FastAPI API
-                         |
-           +-------------+-------------+
-           |             |             |
-           v             v             v
-     Inventory &     Risk Monitor   Investigation
-     Sales Metrics   + Scheduler       Agent
-           |             |             |
-           +-------------+-------------+
-                         |
-                         v
-                   SQLAlchemy ORM
-                         |
-              +----------+----------+
-              |                     |
-              v                     v
-          SQLite local        PostgreSQL Docker
-              |
-              v
-       Products, Sales, Risks,
-       Replenishment Actions
+              Streamlit Dashboard
+                       |
+                       | REST API Requests
+                       v
+                 FastAPI Backend
+                       |
+          +------------+-------------+
+          |            |             |
+          v            v             v
+     Inventory &   Risk Monitor   Investigation
+     Sales Metrics + Scheduler       Agent
+          |            |             |
+          +------------+-------------+
+                       |
+                       v
+                 SQLAlchemy ORM
+                       |
+               +-------+--------+
+               |                |
+               v                v
+           SQLite DB       PostgreSQL DB
+               |
+               v
+       Products, Sales, Risk Alerts,
+       Forecasts and Replenishment Actions
 ```
 
 ## Repository Structure
 
 ```text
-ai-ecommerce-operations-agent/
+StockPilot-AI-Intelligent-Inventory-Retail-Operations-Agent/
 ├── app/
 │   ├── integrations/
-│   │   └── shopify.py       # Read-only Shopify integration scaffold
-│   ├── agent.py             # Investigation and replenishment proposals
-│   ├── config.py            # Environment-based configuration
-│   ├── database.py          # SQLAlchemy database setup
-│   ├── logic.py             # Sales metrics, forecasting, risk rules
-│   ├── main.py              # FastAPI routes and monitoring scheduler
-│   ├── models.py            # Database models
-│   ├── schemas.py            # API schemas
-│   └── seed.py               # Synthetic demo catalog and sales data
+│   │   └── shopify.py
+│   ├── agent.py
+│   ├── config.py
+│   ├── database.py
+│   ├── logic.py
+│   ├── main.py
+│   ├── models.py
+│   ├── schemas.py
+│   └── seed.py
 ├── dashboard/
-│   └── app.py                # Streamlit dashboard
+│   └── app.py
 ├── tests/
 │   ├── test_api.py
 │   └── test_logic.py
-├── .github/workflows/
-│   └── tests.yml             # CI workflow
-├── docker-compose.yml
+├── .github/
+│   └── workflows/
+│       └── tests.yml
 ├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
-├── start_windows.bat         # Windows local startup helper
+├── start_windows.bat
+├── .env.example
+├── .gitignore
 └── README.md
 ```
 
-## Getting Started — Windows
+## Getting Started
 
 ### Prerequisites
 
 - Python 3.11 or 3.12 recommended
-- Git (optional, if cloning)
-- Docker Desktop only if you want to use the PostgreSQL Docker setup
-- Google Gemini API key only if you want the optional LLM-generated investigation summary
+- Git (optional)
+- Docker Desktop for the PostgreSQL Docker setup
+- Google Gemini API key for optional AI-generated investigation summaries
 
-### Option 1: Quick Start (Recommended)
+### Option 1: Quick Start on Windows
 
-1. Download or clone the repository and extract it to a normal folder.
-2. Open the project folder.
-3. Double-click `start_windows.bat`, or run it from Command Prompt:
+1. Clone the repository or download and extract the project.
+2. Open Command Prompt in the project directory.
+3. Run:
 
 ```cmd
 start_windows.bat
 ```
 
-The helper script is intended to create a virtual environment, install dependencies, seed demo data through application startup, and launch the API and dashboard in separate windows.
+The startup script is intended to create the virtual environment, install dependencies, and launch the backend and dashboard.
 
-Open these URLs:
+Open the following URLs after the services start:
 
 | Service | URL |
 |---|---|
 | Streamlit Dashboard | http://localhost:8501 |
 | FastAPI Swagger UI | http://localhost:8000/docs |
-| Health Check | http://localhost:8000/health |
+| API Health Check | http://localhost:8000/health |
 
-If the dashboard opens before the API is ready, wait a few seconds and refresh.
+### Option 2: Manual Setup
 
-### Option 2: Manual Local Setup
-
-From the project root in Command Prompt:
+Create a virtual environment and install dependencies from the project root:
 
 ```cmd
 py -3.12 -m venv .venv
 .venv\Scripts\activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+Start the backend:
+
+```cmd
 uvicorn app.main:app --reload --port 8000
 ```
 
-Open a **second terminal** in the project root:
+Open a second terminal in the project directory, activate the environment, and start the dashboard:
 
 ```cmd
 .venv\Scripts\activate
 streamlit run dashboard\app.py
 ```
 
-The application uses SQLite by default, so no separate database setup is needed for a local demo. If the `py -3.12` launcher is unavailable, use an installed Python 3.11 or 3.12 interpreter to create the virtual environment.
+The local configuration uses SQLite by default, so a separate database server is not required for the basic demo.
 
-### Option 3: Docker with PostgreSQL
+### Option 3: Docker
 
-Make sure Docker Desktop is running, then execute from the project root:
+Make sure Docker Desktop is running, then execute:
 
 ```cmd
 docker compose up --build
 ```
 
-The Compose setup starts PostgreSQL, the FastAPI API, and the Streamlit dashboard. PostgreSQL is exposed on host port `5433`; the API is on port `8000` and the dashboard on port `8501`.
+The Docker Compose setup starts the backend, dashboard, and PostgreSQL database.
 
-Stop the services with:
+Access the dashboard at `http://localhost:8501` and the API documentation at `http://localhost:8000/docs`.
+
+To stop the services:
 
 ```cmd
 docker compose down
 ```
 
-To preserve the database volume, do not add `-v`.
+To preserve the database volume, do not add the `-v` option.
 
 ## Configuration
 
-The application works in rules-only demo mode without an AI key. For optional Gemini-powered investigation summaries, configure these environment variables in a local `.env` file:
+The project supports rules-based operation without a Gemini API key.
+
+For optional Gemini-powered investigations, configure the following environment variables in your local `.env` file:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-The application also supports configuration such as `DATABASE_URL`, `MONITOR_INTERVAL_SECONDS`, `SAFETY_BUFFER_DAYS`, `LOW_STOCK_DAYS`, and `DEAD_STOCK_DAYS`. Check `app/config.py` and `docker-compose.yml` for defaults.
+Other configuration options include:
 
-**Security:** Never commit `.env` files, API keys, database credentials, or real Shopify access tokens to GitHub. The supplied demo data is synthetic.
+- `DATABASE_URL`
+- `MONITOR_INTERVAL_SECONDS`
+- `SAFETY_BUFFER_DAYS`
+- `LOW_STOCK_DAYS`
+- `DEAD_STOCK_DAYS`
+
+Check `app/config.py` and `docker-compose.yml` for the exact defaults used by the project.
+
+**Security:** Never commit API keys, passwords, database credentials, or real store access tokens to GitHub.
 
 ## API Endpoints
 
-| Method | Endpoint | Purpose |
+| Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | API health response |
-| `GET` | `/products` | List products |
-| `GET` | `/products/{sku}` | Product details and sales metrics |
-| `GET` | `/risks?status=open` | List open risk alerts; use `status=all` for all statuses |
-| `POST` | `/monitor/run` | Run risk monitoring immediately |
-| `POST` | `/forecast/{sku}` | Calculate the demand baseline |
-| `POST` | `/agent/investigate/{sku}` | Investigate a product and return evidence and recommendations |
-| `POST` | `/actions/replenishment/{sku}` | Create a draft replenishment proposal |
-| `GET` | `/actions` | List replenishment proposals and decisions |
-| `POST` | `/actions/{action_id}/decision` | Approve or reject a pending proposal |
-| `POST` | `/demo/reset` | Restore the synthetic demo catalog and sales history |
+| GET | `/health` | Check API health |
+| GET | `/products` | List available products |
+| GET | `/products/{sku}` | Retrieve product details and sales metrics |
+| GET | `/risks?status=open` | List open inventory risk alerts |
+| POST | `/monitor/run` | Trigger inventory monitoring |
+| POST | `/forecast/{sku}` | Generate a demand baseline |
+| POST | `/agent/investigate/{sku}` | Investigate product risks and recommendations |
+| POST | `/actions/replenishment/{sku}` | Create a replenishment proposal |
+| GET | `/actions` | List proposals and decisions |
+| POST | `/actions/{action_id}/decision` | Approve or reject a proposal |
+| POST | `/demo/reset` | Restore the synthetic demo dataset |
 
-Interactive request and response schemas are available at `http://localhost:8000/docs`.
+Use Swagger UI at `http://localhost:8000/docs` to explore the available endpoints and their request schemas.
 
 ## Testing
 
-Activate the project's virtual environment, then run:
+Activate the project's virtual environment and run:
 
 ```cmd
 pytest
 ```
 
-The repository includes API and business-logic tests plus a GitHub Actions workflow. For production readiness, add broader integration tests, data-quality checks, forecast evaluation, and end-to-end dashboard tests.
+The repository includes tests for API behavior and core business logic, along with a GitHub Actions workflow.
 
-## Limitations and Future Improvements
+## Limitations and Future Enhancements
 
-- This is a portfolio MVP, not a fully audited production system.
-- Demo inventory and sales are synthetic, not live retailer data.
-- The demand forecast is a simple moving-average baseline, not a trained predictive model; it does not account for promotions, holidays, seasonality, or demand censored by stockouts.
-- Risk thresholds are configurable rule-based heuristics and should be validated for a real business.
-- The Shopify module is a read-only integration scaffold; live synchronization requires store credentials, appropriate scopes, and validation against the store's current API version.
-- The current demo does not provide production-grade user authentication, tenant isolation, database migrations, or a complete audit/security layer.
-- Approvals record decisions only. No purchase order or supplier communication is sent.
+- The current application uses synthetic inventory and sales data rather than live retailer data.
+- Scheduled monitoring processes the data available in the application; real-time external store synchronization is not yet implemented.
+- Demand estimation uses a simple moving-average baseline, not a trained machine-learning forecasting model.
+- Risk detection relies on configurable rule-based thresholds.
+- The Shopify client is an integration scaffold and requires store credentials and implementation of live synchronization.
+- Gemini integration is optional; deterministic rules provide a fallback.
+- Replenishment approvals are recorded in the application but do not submit purchase orders.
+- Production deployment would require additional security, authentication, authorization, monitoring, and operational safeguards.
 
-Possible next steps include live inventory synchronization, role-based access, tenant isolation, background task queues, richer demand models, forecast evaluation, observability, alert delivery, and production deployment.
+Potential future improvements include live e-commerce integrations, richer forecasting models, notifications, role-based access control, background processing, and production deployment.
 
 ## Author
 
 **Shruti Mawalkar**
 
-Built as a portfolio project exploring AI-assisted retail operations, inventory analytics, REST API development, automated monitoring, demand baselines, and human-in-the-loop agent workflows.
+Built as a portfolio project exploring AI-assisted retail operations, inventory analytics, automated monitoring, demand estimation, REST API development, and human-in-the-loop decision workflows.
 
 ## Project Links
 
-- **GitHub Repository:** Add your repository URL here after uploading the project.
+- **GitHub Repository:** https://github.com/ShrutiMawalkar/StockPilot-AI-Intelligent-Inventory-Retail-Operations-Agent
